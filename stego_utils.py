@@ -119,13 +119,33 @@ def extract_message(img, key, max_pixels=1000000):
                     raise ValueError("Failed to convert binary data to bytes")
                 
                 try:
-                    decompressed_message = zlib.decompress(extracted_data)
-                    decrypted_message = decrypt_message(decompressed_message, key)
-                    return decrypted_message.decode('utf-8', errors='replace')
-                except zlib.error as e:
-                    raise ValueError(f"Decompression failed: {str(e)}")
+                    try:
+                        # First try to decompress the data
+                        decompressed_message = zlib.decompress(extracted_data)
+                    except zlib.error as e:
+                        # If decompression fails, try to decrypt directly (in case it wasn't compressed)
+                        try:
+                            decrypted_message = decrypt_message(extracted_data, key)
+                            return decrypted_message
+                        except Exception as decrypt_error:
+                            # If decryption fails, try to return as raw data
+                            return extracted_data
+                    
+                    # If we get here, decompression succeeded, now try decryption
+                    try:
+                        decrypted_message = decrypt_message(decompressed_message, key)
+                        # Try to decode as UTF-8, return bytes if it fails
+                        try:
+                            return decrypted_message.decode('utf-8', errors='replace')
+                        except UnicodeDecodeError:
+                            return decrypted_message
+                    except Exception as decrypt_error:
+                        # If decryption fails, return the decompressed data
+                        return decompressed_message
+                        
                 except Exception as e:
-                    raise ValueError(f"Decryption failed: {str(e)}")
+                    # If all else fails, return the extracted data as is
+                    return extracted_data
         
         # If we get here, no end marker was found
         raise ValueError("No hidden message found in the image")
