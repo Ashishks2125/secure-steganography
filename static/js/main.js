@@ -102,24 +102,7 @@ document.getElementById('decodeForm').addEventListener('submit', async function(
         const data = await response.json();
         
         if (response.ok) {
-            let message = data.message;
-            
-            // If the message is base64 encoded, create a download link
-            if (data.is_base64) {
-                try {
-                    // Try to decode base64 to see if it's a valid message
-                    const decoded = atob(message);
-                    message = `Binary data detected. <a href="data:application/octet-stream;base64,${message}" download="decoded_message.bin" class="btn btn-sm btn-primary mt-2">Download File</a>`;
-                } catch (e) {
-                    // If not valid base64, show as is
-                    message = `Decoded Message (Base64): <pre class="mt-2 p-2 bg-light border rounded">${escapeHtml(message)}</pre>`;
-                }
-            } else {
-                // Regular text message
-                message = `Decoded Message: <pre class="mt-2 p-2 bg-light border rounded">${escapeHtml(message)}</pre>`;
-            }
-            
-            showResult('decodeResult', message, 'success');
+            showResult('decodeResult', `Decoded Message: <pre class="mt-2 p-2 bg-light border rounded">${escapeHtml(data.message)}</pre>`, 'success');
         } else {
             showResult('decodeResult', `Error: ${data.error || 'Failed to decode message'}`, 'danger');
         }
