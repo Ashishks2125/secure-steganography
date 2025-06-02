@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Image Steganography</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center mb-4">Secure Image Steganography</h1>
+        
+        <ul class="nav nav-tabs" id="myTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="encode-tab" data-bs-toggle="tab" data-bs-target="#encode" type="button" role="tab">
+                    Encode
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="decode-tab" data-bs-toggle="tab" data-bs-target="#decode" type="button" role="tab">
+                    Decode
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content p-4 border border-top-0 rounded-bottom" id="myTabContent">
+            <!-- Encode Tab -->
+            <div class="tab-pane fade show active" id="encode" role="tabpanel">
+                <form id="encodeForm">
+                    <div class="mb-3">
+                        <label for="messageFile" class="form-label">Text File with Message:</label>
+                        <input class="form-control" type="file" id="messageFile" accept=".txt" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="imageFile" class="form-label">Cover Image:</label>
+                        <input class="form-control" type="file" id="imageFile" accept="image/*" required>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col">
+                            <label for="privateKey" class="form-label">Your Private Key (number less than 23):</label>
+                            <input type="number" class="form-control" id="privateKey" min="1" max="22" required>
+                        </div>
+                        <div class="col">
+                            <label for="publicKey" class="form-label">Other User's Public Key:</label>
+                            <input type="number" class="form-control" id="publicKey" required>
+                        </div>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Encode Message</button>
+                    </div>
+                </form>
+                <div id="encodeResult" class="mt-3"></div>
+            </div>
+
+            <!-- Decode Tab -->
+            <div class="tab-pane fade" id="decode" role="tabpanel">
+                <form id="decodeForm">
+                    <div class="mb-3">
+                        <label for="encodedImage" class="form-label">Encoded Image:</label>
+                        <input class="form-control" type="file" id="encodedImage" accept="image/*" required>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col">
+                            <label for="decodePrivateKey" class="form-label">Your Private Key (number less than 23):</label>
+                            <input type="number" class="form-control" id="decodePrivateKey" min="1" max="22" required>
+                        </div>
+                        <div class="col">
+                            <label for="decodePublicKey" class="form-label">Other User's Public Key:</label>
+                            <input type="number" class="form-control" id="decodePublicKey" required>
+                        </div>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-success">Decode Message</button>
+                    </div>
+                </form>
+                <div id="decodeResult" class="mt-3"></div>
+            </div>
+        </div>
+
+        <!-- Key Generation Section -->
+        <div class="card mt-4">
+            <div class="card-header">
+                Key Generation
+            </div>
+            <div class="card-body">
+                <p>To generate a key pair, enter a private key (a number less than 23) and calculate the public key:</p>
+                <div class="row">
+                    <div class="col-md-5">
+                        <label for="keyPrivate" class="form-label">Private Key (keep this secret):</label>
+                        <input type="number" class="form-control mb-2" id="keyPrivate" min="1" max="22">
+                    </div>
+                    <div class="col-md-5">
+                        <label for="keyPublic" class="form-label">Public Key (share this):</label>
+                        <input type="text" class="form-control mb-2" id="keyPublic" readonly>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button class="btn btn-secondary" onclick="calculatePublicKey()">Calculate</button>
+                    </div>
+                </div>
+                <div class="alert alert-info mt-3">
+                    <strong>Note:</strong> For secure communication, each user should have their own private key and share their public key with others.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
