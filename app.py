@@ -136,7 +136,20 @@ def decode():
         # Extract message from the image
         try:
             decrypted_message = extract_message(img, shared_key)
-            return jsonify({'message': decrypted_message})
+            
+            # Ensure the message is a string
+            if isinstance(decrypted_message, bytes):
+                try:
+                    decrypted_message = decrypted_message.decode('utf-8', errors='replace')
+                except UnicodeDecodeError:
+                    # If UTF-8 decoding fails, return as base64
+                    import base64
+                    decrypted_message = base64.b64encode(decrypted_message).decode('ascii')
+            
+            return jsonify({
+                'message': decrypted_message,
+                'is_base64': not isinstance(decrypted_message, str) or not decrypted_message.isprintable()
+            })
         except ValueError as e:
             return jsonify({'error': str(e)}), 400
         except Exception as e:

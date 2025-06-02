@@ -16,11 +16,17 @@ def binary_to_text(binary_data):
 
 def embed_message(img, message, key, output_path):
     try:
+        # Ensure message is bytes
         if isinstance(message, str):
             message = message.encode('utf-8')
-            
+        
+        # Encrypt the message
         encrypted_message = encrypt_message(message, key)
+        
+        # Compress the encrypted message
         compressed_message = zlib.compress(encrypted_message)
+        
+        # Convert to binary and add end marker
         binary_message = text_to_binary(compressed_message) + '1111111111111110'
 
         h, w, _ = img.shape
