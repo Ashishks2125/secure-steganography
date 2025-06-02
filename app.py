@@ -36,26 +36,34 @@ def index():
 
 @app.route('/encode', methods=['POST'])
 def encode():
-    if 'image' not in request.files or 'message' not in request.files:
-        return jsonify({'error': 'Missing required files'}), 400
-    
     try:
-        # Validate request
-        if 'image' not in request.files or 'message' not in request.form or 'key' not in request.form:
-            return jsonify({'error': 'Missing required fields'}), 400
-        
+        # Check if the request contains the required fields
+        if 'image' not in request.files:
+            return jsonify({'error': 'No image file provided'}), 400
+            
         file = request.files['image']
-        message = request.form['message']
-        key = request.form['key']
         
+        # Get message and key from form data
+        message = request.form.get('message', '')
+        key = request.form.get('key', '')
+        
+        # Validate required fields
+        if not message:
+            return jsonify({'error': 'Message is required'}), 400
+            
+        if not key:
+            return jsonify({'error': 'Encryption key is required'}), 400
+            
         if not key.isdigit():
             return jsonify({'error': 'Key must be a numeric value'}), 400
         
         if file.filename == '':
-            return jsonify({'error': 'No selected file'}), 400
-        
-        if not file or not allowed_file(file.filename):
-            return jsonify({'error': 'File type not allowed. Please upload a valid image file (PNG, JPG, JPEG, BMP).'}), 400
+            return jsonify({'error': 'No file selected'}), 400
+            
+        if not allowed_file(file.filename):
+            return jsonify({
+                'error': 'Invalid file type. Allowed types are: ' + ', '.join(ALLOWED_EXTENSIONS)
+            }), 400
         
         # Read and validate image
         try:
@@ -125,21 +133,27 @@ def encode():
 def decode():
     """Handle message extraction from an image."""
     try:
-        # Validate request
-        if 'image' not in request.files or 'key' not in request.form:
-            return jsonify({'error': 'Missing required fields'}), 400
-        
+        # Check if the request contains the required fields
+        if 'image' not in request.files:
+            return jsonify({'error': 'No image file provided'}), 400
+            
         file = request.files['image']
-        key = request.form['key']
+        key = request.form.get('key', '')
         
+        # Validate required fields
+        if not key:
+            return jsonify({'error': 'Decryption key is required'}), 400
+            
         if not key.isdigit():
             return jsonify({'error': 'Key must be a numeric value'}), 400
-        
+            
         if file.filename == '':
             return jsonify({'error': 'No file selected'}), 400
             
-        if not file or not allowed_file(file.filename):
-            return jsonify({'error': 'File type not allowed. Please upload a valid image file (PNG, JPG, JPEG, BMP).'}), 400
+        if not allowed_file(file.filename):
+            return jsonify({
+                'error': 'Invalid file type. Allowed types are: ' + ', '.join(ALLOWED_EXTENSIONS)
+            }), 400
         
         # Read and validate image
         try:
@@ -147,33 +161,52 @@ def decode():
             nparr = np.frombuffer(file_content, np.uint8)
             img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
             
-            for i in range(min(h, 1000)):  # Limit to first 1000 rows for performance
-                for j in range(min(w, 1000)):  # Limit to first 1000 columns
-                    for k in range(3):
-                        binary_message += format(img[i, j, k], '08b')[-2:]
+            if img is None or img.size == 0:
+                return jsonify({'error': 'Invalid or corrupted image file'}), 400
+                
+            # Limit image size for performance
+            max_dimension = 5000
+            if img.shape[0] > max_dimension or img.shape[1] > max_dimension:
+                return jsonify({
+                    'error': f'Image dimensions are too large. Maximum allowed dimension is {max_dimension}x{max_dimension} pixels.'
+                }), 400
             
-            end_marker = '1111111111111110'
-            end_index = binary_message.find(end_marker)
-            
-            if end_index == -1:
-                return jsonify({'error': 'No hidden message found. The image might not contain an encoded message or the keys are incorrect.'}), 400
-            
-            binary_message = binary_message[:end_index]
-            extracted_data = binary_to_text(binary_message)
-            
+            # Extract the message
             try:
-                import zlib
-                decompressed_message = zlib.decompress(extracted_data)
-                decrypted_message = decrypt_message(decompressed_message, shared_key)
-                return jsonify({'message': decrypted_message})
+                result = extract_message(img, key)
+                
+                if result is None:
+                    return jsonify({'error': 'No message found in the image or incorrect key'}), 400
+                    
+                if isinstance(result, bytes):
+                    # If the result is binary, return it as a file
+                    return send_file(
+                        io.BytesIO(result),
+                        mimetype='application/octet-stream',
+                        as_attachment=True,
+                        download_name='extracted_message.bin',
+                        max_age=0  # Prevent caching
+                    )
+                else:
+                    # If the result is text, return it as JSON
+                    return jsonify({
+                        'message': result,
+                        'is_text': True
+                    })
+                    
+            except ValueError as ve:
+                return jsonify({'error': str(ve)}), 400
             except Exception as e:
-                return jsonify({'error': 'Failed to decrypt message. The keys might be incorrect or the image is corrupted.'}), 400
+                app.logger.error(f"Error during decoding: {str(e)}", exc_info=True)
+                return jsonify({'error': 'An error occurred while extracting the message'}), 400
                 
         except Exception as e:
-            return jsonify({'error': f'Error processing image: {str(e)}'}), 500
+            app.logger.error(f"Error processing image: {str(e)}", exc_info=True)
+            return jsonify({'error': 'Failed to process the uploaded image'}), 400
             
     except Exception as e:
-        return jsonify({'error': f'An error occurred: {str(e)}'}), 500
+        app.logger.error(f"Unexpected error in /decode: {str(e)}", exc_info=True)
+        return jsonify({'error': 'An unexpected error occurred'}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
